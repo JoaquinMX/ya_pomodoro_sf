@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -19,6 +21,8 @@ class TimerScreen extends ConsumerWidget {
 
     final bool isRunning = timerState.runState == TimerRunState.running;
     final bool isPaused = timerState.runState == TimerRunState.paused;
+    final bool canResetWork = timerState.phase == TimerPhase.pomodoro;
+    final double primaryButtonWidth = _primaryButtonWidth(context, l10n);
 
     final String primaryLabel = isRunning
         ? l10n.pauseButton
@@ -113,27 +117,50 @@ class TimerScreen extends ConsumerWidget {
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
                 const SizedBox(height: 28),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                Column(
                   children: <Widget>[
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 280),
-                      child: FilledButton(
-                        key: ValueKey<String>(primaryLabel),
-                        onPressed: () async {
-                          if (isRunning) {
-                            await timerController.pause();
-                            return;
-                          }
-                          await timerController.start();
-                        },
-                        child: Text(primaryLabel),
-                      ),
+                    Row(
+                      key: const Key('action-row-primary'),
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        SizedBox(
+                          key: const Key('primary-action-wrapper'),
+                          width: primaryButtonWidth,
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 280),
+                            child: FilledButton(
+                              key: ValueKey<String>('primary-$primaryLabel'),
+                              onPressed: () async {
+                                if (isRunning) {
+                                  await timerController.pause();
+                                  return;
+                                }
+                                await timerController.start();
+                              },
+                              child: Text(primaryLabel),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        OutlinedButton(
+                          onPressed: canResetWork
+                              ? () => timerController.resetCurrentWorkInterval()
+                              : null,
+                          child: Text(l10n.resetWorkButton),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    OutlinedButton(
-                      onPressed: () => timerController.reset(),
-                      child: Text(l10n.resetButton),
+                    const SizedBox(height: 12),
+                    Row(
+                      key: const Key('action-row-reset-all'),
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        OutlinedButton(
+                          key: const Key('reset-all-button'),
+                          onPressed: () => timerController.reset(),
+                          child: Text(l10n.resetButton),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -172,5 +199,33 @@ class TimerScreen extends ConsumerWidget {
     final int minutes = totalSeconds ~/ 60;
     final int seconds = totalSeconds % 60;
     return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  double _primaryButtonWidth(BuildContext context, AppLocalizations l10n) {
+    final TextStyle textStyle =
+        Theme.of(context).textTheme.labelLarge ?? const TextStyle(fontSize: 14);
+    final TextScaler textScaler = MediaQuery.textScalerOf(context);
+    final TextDirection textDirection = Directionality.of(context);
+
+    final List<String> labels = <String>[
+      l10n.startButton,
+      l10n.pauseButton,
+      l10n.resumeButton,
+    ];
+
+    double widestLabel = 0;
+    for (final String label in labels) {
+      final TextPainter painter = TextPainter(
+        text: TextSpan(text: label, style: textStyle),
+        textDirection: textDirection,
+        textScaler: textScaler,
+        maxLines: 1,
+      )..layout();
+      widestLabel = math.max(widestLabel, painter.width);
+    }
+
+    const double horizontalPadding = 48;
+    const double minimumWidth = 96;
+    return math.max(minimumWidth, widestLabel + horizontalPadding);
   }
 }

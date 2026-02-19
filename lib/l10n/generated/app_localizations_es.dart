@@ -30,7 +30,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get resumeButton => 'Reanudar';
 
   @override
-  String get resetButton => 'Reiniciar';
+  String get resetButton => 'Reiniciar todo';
+
+  @override
+  String get resetWorkButton => 'Reiniciar trabajo';
 
   @override
   String get settingsButton => 'Configuración';
@@ -111,7 +114,10 @@ class AppLocalizationsEs419 extends AppLocalizationsEs {
   String get resumeButton => 'Reanudar';
 
   @override
-  String get resetButton => 'Reiniciar';
+  String get resetButton => 'Reiniciar todo';
+
+  @override
+  String get resetWorkButton => 'Reiniciar trabajo';
 
   @override
   String get settingsButton => 'Configuración';

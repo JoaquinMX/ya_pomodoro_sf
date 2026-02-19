@@ -58,6 +58,127 @@ void main() {
       expect(notificationService.cancelCalls, 2);
     });
 
+    test(
+      'resetCurrentWorkInterval keeps running state, cycle counter, and reschedules notification',
+      () async {
+        final TimerController controller = TimerController(
+          initialSettings: PomodoroSettings.defaults(),
+          initialSession: const TimerSessionState(
+            phase: TimerPhase.pomodoro,
+            runState: TimerRunState.paused,
+            remainingSeconds: 42,
+            completedPomodorosInCycle: 2,
+          ),
+          sessionRepository: sessionRepository,
+          notificationService: notificationService,
+          audioCueService: audioService,
+          now: clock.call,
+        );
+        addTearDown(controller.dispose);
+
+        await controller.start();
+        final int scheduledBefore = notificationService.scheduledCalls.length;
+
+        await controller.resetCurrentWorkInterval();
+
+        expect(controller.state.phase, TimerPhase.pomodoro);
+        expect(controller.state.runState, TimerRunState.running);
+        expect(controller.state.remainingSeconds, 25 * 60);
+        expect(controller.state.completedPomodorosInCycle, 2);
+        expect(controller.state.phaseStartedAtUtc, isNotNull);
+        expect(controller.state.phaseEndsAtUtc, isNotNull);
+        expect(notificationService.scheduledCalls.length, scheduledBefore + 1);
+      },
+    );
+
+    test(
+      'resetCurrentWorkInterval keeps paused state and resets only work elapsed time',
+      () async {
+        final TimerController controller = TimerController(
+          initialSettings: PomodoroSettings.defaults(),
+          initialSession: const TimerSessionState(
+            phase: TimerPhase.pomodoro,
+            runState: TimerRunState.paused,
+            remainingSeconds: 10,
+            completedPomodorosInCycle: 3,
+          ),
+          sessionRepository: sessionRepository,
+          notificationService: notificationService,
+          audioCueService: audioService,
+          now: clock.call,
+        );
+        addTearDown(controller.dispose);
+
+        await controller.resetCurrentWorkInterval();
+
+        expect(controller.state.phase, TimerPhase.pomodoro);
+        expect(controller.state.runState, TimerRunState.paused);
+        expect(controller.state.remainingSeconds, 25 * 60);
+        expect(controller.state.completedPomodorosInCycle, 3);
+        expect(controller.state.phaseStartedAtUtc, isNull);
+        expect(controller.state.phaseEndsAtUtc, isNull);
+      },
+    );
+
+    test(
+      'resetCurrentWorkInterval keeps idle state and resets only work elapsed time',
+      () async {
+        final TimerController controller = TimerController(
+          initialSettings: PomodoroSettings.defaults(),
+          initialSession: const TimerSessionState(
+            phase: TimerPhase.pomodoro,
+            runState: TimerRunState.idle,
+            remainingSeconds: 10,
+            completedPomodorosInCycle: 1,
+          ),
+          sessionRepository: sessionRepository,
+          notificationService: notificationService,
+          audioCueService: audioService,
+          now: clock.call,
+        );
+        addTearDown(controller.dispose);
+
+        await controller.resetCurrentWorkInterval();
+
+        expect(controller.state.phase, TimerPhase.pomodoro);
+        expect(controller.state.runState, TimerRunState.idle);
+        expect(controller.state.remainingSeconds, 25 * 60);
+        expect(controller.state.completedPomodorosInCycle, 1);
+        expect(controller.state.phaseStartedAtUtc, isNull);
+        expect(controller.state.phaseEndsAtUtc, isNull);
+      },
+    );
+
+    test('resetCurrentWorkInterval does nothing on break phases', () async {
+      final TimerController controller = TimerController(
+        initialSettings: PomodoroSettings.defaults(),
+        initialSession: const TimerSessionState(
+          phase: TimerPhase.shortBreak,
+          runState: TimerRunState.paused,
+          remainingSeconds: 200,
+          completedPomodorosInCycle: 2,
+        ),
+        sessionRepository: sessionRepository,
+        notificationService: notificationService,
+        audioCueService: audioService,
+        now: clock.call,
+      );
+      addTearDown(controller.dispose);
+
+      final TimerSessionState before = controller.state;
+      final int scheduledBefore = notificationService.scheduledCalls.length;
+      await controller.resetCurrentWorkInterval();
+
+      expect(controller.state.phase, before.phase);
+      expect(controller.state.runState, before.runState);
+      expect(controller.state.remainingSeconds, before.remainingSeconds);
+      expect(
+        controller.state.completedPomodorosInCycle,
+        before.completedPomodorosInCycle,
+      );
+      expect(notificationService.scheduledCalls.length, scheduledBefore);
+    });
+
     test('fourth pomodoro completion transitions to long break', () {
       final DateTime start = DateTime.utc(2026, 1, 1, 10, 0, 0);
       clock.now = start.add(const Duration(seconds: 2));

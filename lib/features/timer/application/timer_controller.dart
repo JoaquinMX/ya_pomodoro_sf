@@ -135,6 +135,36 @@ class TimerController extends StateNotifier<TimerSessionState> {
     await _persistState();
   }
 
+  Future<void> resetCurrentWorkInterval() async {
+    if (state.phase != TimerPhase.pomodoro) {
+      return;
+    }
+
+    final int fullDurationSeconds = TimerPhase.pomodoro.durationSeconds(
+      _settings,
+    );
+
+    if (state.isRunning) {
+      final DateTime now = _now();
+      state = state.copyWith(
+        remainingSeconds: fullDurationSeconds,
+        phaseStartedAtUtc: now,
+        phaseEndsAtUtc: now.add(Duration(seconds: fullDurationSeconds)),
+      );
+      await _scheduleNotificationForCurrentPhase();
+      await _persistState();
+      return;
+    }
+
+    state = state.copyWith(
+      remainingSeconds: fullDurationSeconds,
+      clearPhaseStartedAtUtc: true,
+      clearPhaseEndsAtUtc: true,
+    );
+    await _notificationService.cancelPhaseCompletion();
+    await _persistState();
+  }
+
   Future<void> applySettings(PomodoroSettings settings) async {
     if (!state.isIdle) {
       throw StateError('Settings can only be changed while timer is idle.');

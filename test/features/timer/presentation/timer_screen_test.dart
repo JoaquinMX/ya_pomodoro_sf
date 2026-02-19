@@ -44,6 +44,7 @@ void main() {
     Future<ProviderContainer> pumpScreen(
       WidgetTester tester, {
       PomodoroSettings? initialSettings,
+      TimerSessionState? initialSession,
     }) async {
       final ProviderContainer container = ProviderContainer(
         overrides: <Override>[
@@ -55,7 +56,9 @@ void main() {
           initialSettingsProvider.overrideWithValue(
             initialSettings ?? settingsRepository.current,
           ),
-          initialSessionProvider.overrideWithValue(sessionRepository.current),
+          initialSessionProvider.overrideWithValue(
+            initialSession ?? sessionRepository.current,
+          ),
         ],
       );
       addTearDown(container.dispose);
@@ -107,7 +110,8 @@ void main() {
 
       expect(find.text('25:00'), findsOneWidget);
       expect(find.text('Start'), findsOneWidget);
-      expect(find.text('Reset'), findsOneWidget);
+      expect(find.text('Reset all'), findsOneWidget);
+      expect(find.text('Reset work'), findsOneWidget);
 
       await tester.tap(find.text('Start'));
       await tester.pump();
@@ -117,9 +121,146 @@ void main() {
       await tester.pump();
       expect(find.text('Resume'), findsOneWidget);
 
-      await tester.tap(find.text('Reset'));
+      await tester.tap(find.text('Reset all'));
       await tester.pump();
       expect(find.text('25:00'), findsOneWidget);
+      expect(find.text('Start'), findsOneWidget);
+    });
+
+    testWidgets('actions are rendered in two rows', (
+      WidgetTester tester,
+    ) async {
+      await pumpScreen(tester);
+
+      final Finder firstRow = find.byKey(const Key('action-row-primary'));
+      final Finder secondRow = find.byKey(const Key('action-row-reset-all'));
+
+      expect(firstRow, findsOneWidget);
+      expect(secondRow, findsOneWidget);
+
+      expect(
+        find.descendant(of: firstRow, matching: find.text('Start')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: firstRow, matching: find.text('Reset work')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: firstRow, matching: find.text('Reset all')),
+        findsNothing,
+      );
+
+      expect(
+        find.descendant(of: secondRow, matching: find.text('Reset all')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: secondRow, matching: find.text('Reset work')),
+        findsNothing,
+      );
+    });
+
+    testWidgets('primary action button width stays stable across states', (
+      WidgetTester tester,
+    ) async {
+      await pumpScreen(tester);
+
+      final Finder primaryWrapper = find.byKey(
+        const Key('primary-action-wrapper'),
+      );
+      expect(primaryWrapper, findsOneWidget);
+
+      final double startWidth = tester.getSize(primaryWrapper).width;
+
+      await tester.tap(find.text('Start'));
+      await tester.pump();
+      final double pauseWidth = tester.getSize(primaryWrapper).width;
+
+      await tester.tap(find.text('Pause'));
+      await tester.pump();
+      final double resumeWidth = tester.getSize(primaryWrapper).width;
+
+      expect(pauseWidth, closeTo(startWidth, 0.001));
+      expect(resumeWidth, closeTo(startWidth, 0.001));
+    });
+
+    testWidgets('reset work is enabled only in Pomodoro phase', (
+      WidgetTester tester,
+    ) async {
+      await pumpScreen(tester);
+
+      final OutlinedButton enabledResetWork = tester.widget<OutlinedButton>(
+        find.widgetWithText(OutlinedButton, 'Reset work'),
+      );
+      expect(enabledResetWork.onPressed, isNotNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+
+      await pumpScreen(
+        tester,
+        initialSession: const TimerSessionState(
+          phase: TimerPhase.shortBreak,
+          runState: TimerRunState.paused,
+          remainingSeconds: 120,
+          completedPomodorosInCycle: 2,
+        ),
+      );
+
+      final OutlinedButton disabledResetWork = tester.widget<OutlinedButton>(
+        find.widgetWithText(OutlinedButton, 'Reset work'),
+      );
+      expect(disabledResetWork.onPressed, isNull);
+    });
+
+    testWidgets(
+      'reset work restores full Pomodoro time without changing cycle progress',
+      (WidgetTester tester) async {
+        await pumpScreen(
+          tester,
+          initialSession: const TimerSessionState(
+            phase: TimerPhase.pomodoro,
+            runState: TimerRunState.paused,
+            remainingSeconds: 10,
+            completedPomodorosInCycle: 2,
+          ),
+        );
+
+        expect(find.text('00:10'), findsOneWidget);
+        expect(find.text('Cycle 2/4'), findsOneWidget);
+        expect(find.text('Resume'), findsOneWidget);
+
+        await tester.tap(find.text('Reset work'));
+        await tester.pump();
+
+        expect(find.text('25:00'), findsOneWidget);
+        expect(find.text('Cycle 2/4'), findsOneWidget);
+        expect(find.text('Resume'), findsOneWidget);
+      },
+    );
+
+    testWidgets('full reset still clears cycle and returns idle', (
+      WidgetTester tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        initialSession: const TimerSessionState(
+          phase: TimerPhase.pomodoro,
+          runState: TimerRunState.paused,
+          remainingSeconds: 50,
+          completedPomodorosInCycle: 3,
+        ),
+      );
+
+      expect(find.text('Cycle 3/4'), findsOneWidget);
+      expect(find.text('Resume'), findsOneWidget);
+
+      await tester.tap(find.text('Reset all'));
+      await tester.pump();
+
+      expect(find.text('25:00'), findsOneWidget);
+      expect(find.text('Cycle 0/4'), findsOneWidget);
       expect(find.text('Start'), findsOneWidget);
     });
 

@@ -144,8 +144,14 @@ abstract class AppLocalizations {
   /// No description provided for @resetButton.
   ///
   /// In en, this message translates to:
-  /// **'Reset'**
+  /// **'Reset all'**
   String get resetButton;
+
+  /// No description provided for @resetWorkButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset work'**
+  String get resetWorkButton;
 
   /// No description provided for @settingsButton.
   ///

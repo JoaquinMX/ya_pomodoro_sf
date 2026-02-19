@@ -7,7 +7,8 @@
   "startButton": "Iniciar",
   "pauseButton": "Pausar",
   "resumeButton": "Reanudar",
-  "resetButton": "Reiniciar",
+  "resetButton": "Reiniciar todo",
+  "resetWorkButton": "Reiniciar trabajo",
   "settingsButton": "Configuración",
   "cycleProgress": "Ciclo {completed}/4",
   "@cycleProgress": {

@@ -30,7 +30,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get resumeButton => 'Resume';
 
   @override
-  String get resetButton => 'Reset';
+  String get resetButton => 'Reset all';
+
+  @override
+  String get resetWorkButton => 'Reset work';
 
   @override
   String get settingsButton => 'Settings';
