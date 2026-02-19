@@ -1,0 +1,34 @@
+{
+  "@@locale": "en",
+  "appTitle": "Ya Pomodoro",
+  "pomodoroPhase": "Pomodoro",
+  "shortBreakPhase": "Break",
+  "longBreakPhase": "Long Break",
+  "startButton": "Start",
+  "pauseButton": "Pause",
+  "resumeButton": "Resume",
+  "resetButton": "Reset",
+  "settingsButton": "Settings",
+  "cycleProgress": "Cycle {completed}/4",
+  "@cycleProgress": {
+    "placeholders": {
+      "completed": {
+        "type": "int"
+      }
+    }
+  },
+  "pomodoroDurationLabel": "Pomodoro (minutes)",
+  "shortBreakDurationLabel": "Break (minutes)",
+  "longBreakDurationLabel": "Long break (minutes)",
+  "showCycleProgressLabel": "Show cycle progress",
+  "languageLabel": "Language",
+  "languageSystem": "System",
+  "languageEnglish": "English",
+  "languageSpanishLatam": "Español (LatAm)",
+  "saveButton": "Save",
+  "cancelButton": "Cancel",
+  "settingsLockedMessage": "Stop the timer to edit settings.",
+  "invalidDuration": "Use a value between 1 and 120.",
+  "notificationPhaseCompleteTitle": "Phase complete",
+  "notificationPhaseCompleteBody": "Your timer has moved to the next phase"
+}

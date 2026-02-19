@@ -1,0 +1,34 @@
+{
+  "@@locale": "es",
+  "appTitle": "Ya Pomodoro",
+  "pomodoroPhase": "Pomodoro",
+  "shortBreakPhase": "Descanso",
+  "longBreakPhase": "Descanso largo",
+  "startButton": "Iniciar",
+  "pauseButton": "Pausar",
+  "resumeButton": "Reanudar",
+  "resetButton": "Reiniciar",
+  "settingsButton": "Configuración",
+  "cycleProgress": "Ciclo {completed}/4",
+  "@cycleProgress": {
+    "placeholders": {
+      "completed": {
+        "type": "int"
+      }
+    }
+  },
+  "pomodoroDurationLabel": "Pomodoro (minutos)",
+  "shortBreakDurationLabel": "Descanso (minutos)",
+  "longBreakDurationLabel": "Descanso largo (minutos)",
+  "showCycleProgressLabel": "Mostrar progreso del ciclo",
+  "languageLabel": "Idioma",
+  "languageSystem": "Sistema",
+  "languageEnglish": "English",
+  "languageSpanishLatam": "Español (LatAm)",
+  "saveButton": "Guardar",
+  "cancelButton": "Cancelar",
+  "settingsLockedMessage": "Detén el temporizador para editar la configuración.",
+  "invalidDuration": "Usa un valor entre 1 y 120.",
+  "notificationPhaseCompleteTitle": "Fase completada",
+  "notificationPhaseCompleteBody": "Tu temporizador pasó a la siguiente fase"
+}
