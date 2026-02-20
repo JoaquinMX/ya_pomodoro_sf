@@ -12,6 +12,7 @@ class SharedPrefsSessionRepository implements SessionRepository {
   static const String _runStateKey = 'session.runState';
   static const String _remainingSecondsKey = 'session.remainingSeconds';
   static const String _cycleCountKey = 'session.completedPomodorosInCycle';
+  static const String _fullCyclesKey = 'session.fullCyclesCompletedTotal';
   static const String _startedAtKey = 'session.phaseStartedAtUtc';
   static const String _endsAtKey = 'session.phaseEndsAtUtc';
 
@@ -21,6 +22,7 @@ class SharedPrefsSessionRepository implements SessionRepository {
     final String? runStateValue = _prefs.getString(_runStateKey);
     final int? remainingSeconds = _prefs.getInt(_remainingSecondsKey);
     final int? cycle = _prefs.getInt(_cycleCountKey);
+    final int? fullCycles = _prefs.getInt(_fullCyclesKey);
 
     if (phaseValue == null ||
         runStateValue == null ||
@@ -33,6 +35,7 @@ class SharedPrefsSessionRepository implements SessionRepository {
       'runState': runStateValue,
       'remainingSeconds': remainingSeconds,
       'completedPomodorosInCycle': cycle,
+      'fullCyclesCompletedTotal': fullCycles,
       'phaseStartedAtUtc': _prefs.getString(_startedAtKey),
       'phaseEndsAtUtc': _prefs.getString(_endsAtKey),
     };
@@ -50,6 +53,10 @@ class SharedPrefsSessionRepository implements SessionRepository {
     await _prefs.setInt(
       _cycleCountKey,
       map['completedPomodorosInCycle']! as int,
+    );
+    await _prefs.setInt(
+      _fullCyclesKey,
+      map['fullCyclesCompletedTotal']! as int,
     );
 
     final String startedAt = map['phaseStartedAtUtc']! as String;
@@ -74,6 +81,7 @@ class SharedPrefsSessionRepository implements SessionRepository {
     await _prefs.remove(_runStateKey);
     await _prefs.remove(_remainingSecondsKey);
     await _prefs.remove(_cycleCountKey);
+    await _prefs.remove(_fullCyclesKey);
     await _prefs.remove(_startedAtKey);
     await _prefs.remove(_endsAtKey);
   }

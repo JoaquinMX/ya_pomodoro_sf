@@ -69,6 +69,7 @@ class TimerSessionState {
     required this.runState,
     required this.remainingSeconds,
     required this.completedPomodorosInCycle,
+    this.fullCyclesCompletedTotal = 0,
     this.phaseStartedAtUtc,
     this.phaseEndsAtUtc,
   });
@@ -77,6 +78,7 @@ class TimerSessionState {
   final TimerRunState runState;
   final int remainingSeconds;
   final int completedPomodorosInCycle;
+  final int fullCyclesCompletedTotal;
   final DateTime? phaseStartedAtUtc;
   final DateTime? phaseEndsAtUtc;
 
@@ -86,6 +88,7 @@ class TimerSessionState {
       runState: TimerRunState.idle,
       remainingSeconds: TimerPhase.pomodoro.durationSeconds(settings),
       completedPomodorosInCycle: 0,
+      fullCyclesCompletedTotal: 0,
     );
   }
 
@@ -98,6 +101,7 @@ class TimerSessionState {
     TimerRunState? runState,
     int? remainingSeconds,
     int? completedPomodorosInCycle,
+    int? fullCyclesCompletedTotal,
     DateTime? phaseStartedAtUtc,
     DateTime? phaseEndsAtUtc,
     bool clearPhaseStartedAtUtc = false,
@@ -109,6 +113,8 @@ class TimerSessionState {
       remainingSeconds: remainingSeconds ?? this.remainingSeconds,
       completedPomodorosInCycle:
           completedPomodorosInCycle ?? this.completedPomodorosInCycle,
+      fullCyclesCompletedTotal:
+          fullCyclesCompletedTotal ?? this.fullCyclesCompletedTotal,
       phaseStartedAtUtc: clearPhaseStartedAtUtc
           ? null
           : phaseStartedAtUtc ?? this.phaseStartedAtUtc,
@@ -124,6 +130,7 @@ class TimerSessionState {
       'runState': runState.storageValue,
       'remainingSeconds': remainingSeconds,
       'completedPomodorosInCycle': completedPomodorosInCycle,
+      'fullCyclesCompletedTotal': fullCyclesCompletedTotal,
       'phaseStartedAtUtc': phaseStartedAtUtc?.toIso8601String() ?? '',
       'phaseEndsAtUtc': phaseEndsAtUtc?.toIso8601String() ?? '',
     };
@@ -144,12 +151,16 @@ class TimerSessionState {
     final int cycle = values['completedPomodorosInCycle'] is int
         ? values['completedPomodorosInCycle']! as int
         : 0;
+    final int fullCycles = values['fullCyclesCompletedTotal'] is int
+        ? values['fullCyclesCompletedTotal']! as int
+        : 0;
 
     return TimerSessionState(
       phase: TimerPhaseStorage.fromStorage(values['phase'] as String?),
       runState: TimerRunStateStorage.fromStorage(values['runState'] as String?),
       remainingSeconds: remaining > 0 ? remaining : 1,
       completedPomodorosInCycle: cycle.clamp(0, 4),
+      fullCyclesCompletedTotal: fullCycles < 0 ? 0 : fullCycles,
       phaseStartedAtUtc: parseDate(values['phaseStartedAtUtc']),
       phaseEndsAtUtc: parseDate(values['phaseEndsAtUtc']),
     );

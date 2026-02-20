@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -10,6 +11,7 @@ class FlutterLocalNotificationService implements NotificationService {
     : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
 
   static const int _phaseCompleteNotificationId = 4200;
+  static const String _exactAlarmsErrorCode = 'exact_alarms_not_permitted';
 
   final FlutterLocalNotificationsPlugin _plugin;
   bool _didInitialize = false;
@@ -38,11 +40,10 @@ class FlutterLocalNotificationService implements NotificationService {
 
   @override
   Future<void> requestPermissionIfNeeded() async {
-    final AndroidFlutterLocalNotificationsPlugin? androidImpl = _plugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >();
+    final AndroidFlutterLocalNotificationsPlugin? androidImpl =
+        _androidImplementation();
     await androidImpl?.requestNotificationsPermission();
+    await _requestExactAlarmPermissionIfNeeded(androidImpl);
 
     final IOSFlutterLocalNotificationsPlugin? iosImpl = _plugin
         .resolvePlatformSpecificImplementation<
@@ -52,7 +53,7 @@ class FlutterLocalNotificationService implements NotificationService {
   }
 
   @override
-  Future<void> schedulePhaseCompletion({
+  Future<NotificationScheduleOutcome> schedulePhaseCompletion({
     required DateTime phaseEndsAtUtc,
     required TimerPhase phase,
     required String title,
@@ -87,21 +88,97 @@ class FlutterLocalNotificationService implements NotificationService {
       iOS: iosDetails,
     );
 
+    final AndroidScheduleMode scheduleMode = await _preferredScheduleMode();
+
+    try {
+      await _schedule(
+        title: title,
+        body: body,
+        scheduleAt: scheduleAt,
+        details: details,
+        scheduleMode: scheduleMode,
+      );
+      return scheduleMode == AndroidScheduleMode.exactAllowWhileIdle
+          ? NotificationScheduleOutcome.exactScheduled
+          : NotificationScheduleOutcome.inexactFallbackScheduled;
+    } on PlatformException catch (error) {
+      if (error.code != _exactAlarmsErrorCode ||
+          scheduleMode == AndroidScheduleMode.inexactAllowWhileIdle) {
+        rethrow;
+      }
+
+      await _schedule(
+        title: title,
+        body: body,
+        scheduleAt: scheduleAt,
+        details: details,
+        scheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      );
+      return NotificationScheduleOutcome.inexactFallbackScheduled;
+    }
+  }
+
+  @override
+  Future<void> cancelPhaseCompletion() async {
+    await _plugin.cancel(_phaseCompleteNotificationId);
+  }
+
+  AndroidFlutterLocalNotificationsPlugin? _androidImplementation() {
+    return _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+  }
+
+  Future<void> _requestExactAlarmPermissionIfNeeded(
+    AndroidFlutterLocalNotificationsPlugin? androidImpl,
+  ) async {
+    if (androidImpl == null) {
+      return;
+    }
+
+    final bool canScheduleExactNow =
+        await androidImpl.canScheduleExactNotifications() ?? true;
+    if (canScheduleExactNow) {
+      return;
+    }
+
+    await androidImpl.requestExactAlarmsPermission();
+  }
+
+  Future<AndroidScheduleMode> _preferredScheduleMode() async {
+    final AndroidFlutterLocalNotificationsPlugin? androidImpl =
+        _androidImplementation();
+    if (androidImpl == null) {
+      return AndroidScheduleMode.exactAllowWhileIdle;
+    }
+
+    final bool canScheduleExact =
+        await androidImpl.canScheduleExactNotifications() ?? true;
+    if (canScheduleExact) {
+      return AndroidScheduleMode.exactAllowWhileIdle;
+    }
+
+    return AndroidScheduleMode.inexactAllowWhileIdle;
+  }
+
+  Future<void> _schedule({
+    required String title,
+    required String body,
+    required tz.TZDateTime scheduleAt,
+    required NotificationDetails details,
+    required AndroidScheduleMode scheduleMode,
+  }) async {
     await _plugin.zonedSchedule(
       _phaseCompleteNotificationId,
       title,
       body,
       scheduleAt,
       details,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      androidScheduleMode: scheduleMode,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: null,
     );
-  }
-
-  @override
-  Future<void> cancelPhaseCompletion() async {
-    await _plugin.cancel(_phaseCompleteNotificationId);
   }
 }

@@ -44,6 +44,11 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String fullCyclesLabel(int count) {
+    return 'Ciclos completos $count';
+  }
+
+  @override
   String get pomodoroDurationLabel => 'Pomodoro (minutos)';
 
   @override
@@ -79,6 +84,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get invalidDuration => 'Usa un valor entre 1 y 120.';
+
+  @override
+  String get notificationInexactFallbackNotice =>
+      'Las alarmas exactas no están disponibles. Las notificaciones podrían retrasarse un poco.';
 
   @override
   String get notificationPhaseCompleteTitle => 'Fase completada';
@@ -128,6 +137,11 @@ class AppLocalizationsEs419 extends AppLocalizationsEs {
   }
 
   @override
+  String fullCyclesLabel(int count) {
+    return 'Ciclos completos $count';
+  }
+
+  @override
   String get pomodoroDurationLabel => 'Pomodoro (minutos)';
 
   @override
@@ -163,6 +177,10 @@ class AppLocalizationsEs419 extends AppLocalizationsEs {
 
   @override
   String get invalidDuration => 'Usa un valor entre 1 y 120.';
+
+  @override
+  String get notificationInexactFallbackNotice =>
+      'Las alarmas exactas no están disponibles. Las notificaciones podrían retrasarse un poco.';
 
   @override
   String get notificationPhaseCompleteTitle => 'Fase completada';

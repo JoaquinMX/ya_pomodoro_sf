@@ -18,12 +18,14 @@ class TimerController extends StateNotifier<TimerSessionState> {
     required NotificationService notificationService,
     required AudioCueService audioCueService,
     required DateTime Function() now,
+    VoidCallback? onNotificationFallback,
   }) : _settings = initialSettings,
        _initialSession = initialSession,
        _sessionRepository = sessionRepository,
        _notificationService = notificationService,
        _audioCueService = audioCueService,
        _now = now,
+       _onNotificationFallback = onNotificationFallback ?? (() {}),
        super(TimerSessionState.idle(initialSettings)) {
     state = _restoreSnapshot(
       snapshot: initialSession,
@@ -41,6 +43,7 @@ class TimerController extends StateNotifier<TimerSessionState> {
   final NotificationService _notificationService;
   final AudioCueService _audioCueService;
   final DateTime Function() _now;
+  final VoidCallback _onNotificationFallback;
 
   final TimerSessionState? _initialSession;
 
@@ -128,6 +131,7 @@ class TimerController extends StateNotifier<TimerSessionState> {
       runState: TimerRunState.idle,
       remainingSeconds: TimerPhase.pomodoro.durationSeconds(_settings),
       completedPomodorosInCycle: 0,
+      fullCyclesCompletedTotal: state.fullCyclesCompletedTotal,
       phaseStartedAtUtc: null,
       phaseEndsAtUtc: null,
     );
@@ -258,6 +262,7 @@ class TimerController extends StateNotifier<TimerSessionState> {
     DateTime phaseStart = end;
     TimerPhase phase = runningState.phase;
     int cycle = runningState.completedPomodorosInCycle;
+    int fullCycles = runningState.fullCyclesCompletedTotal;
 
     while (true) {
       completedPhases += 1;
@@ -268,6 +273,7 @@ class TimerController extends StateNotifier<TimerSessionState> {
 
       phase = progression.nextPhase;
       cycle = progression.completedPomodorosInCycle;
+      fullCycles += progression.fullCyclesIncrement;
 
       final DateTime phaseEnd = phaseStart.add(
         Duration(seconds: phase.durationSeconds(_settings)),
@@ -281,6 +287,7 @@ class TimerController extends StateNotifier<TimerSessionState> {
             runState: TimerRunState.running,
             remainingSeconds: nextRemaining,
             completedPomodorosInCycle: cycle,
+            fullCyclesCompletedTotal: fullCycles,
             phaseStartedAtUtc: phaseStart,
             phaseEndsAtUtc: phaseEnd,
           ),
@@ -303,22 +310,26 @@ class TimerController extends StateNotifier<TimerSessionState> {
           return const PhaseProgression(
             nextPhase: TimerPhase.longBreak,
             completedPomodorosInCycle: 4,
+            fullCyclesIncrement: 0,
           );
         }
 
         return PhaseProgression(
           nextPhase: TimerPhase.shortBreak,
           completedPomodorosInCycle: incremented,
+          fullCyclesIncrement: 0,
         );
       case TimerPhase.shortBreak:
         return PhaseProgression(
           nextPhase: TimerPhase.pomodoro,
           completedPomodorosInCycle: completedPomodorosInCycle,
+          fullCyclesIncrement: 0,
         );
       case TimerPhase.longBreak:
         return const PhaseProgression(
           nextPhase: TimerPhase.pomodoro,
           completedPomodorosInCycle: 0,
+          fullCyclesIncrement: 1,
         );
     }
   }
@@ -337,13 +348,20 @@ class TimerController extends StateNotifier<TimerSessionState> {
     }
 
     final ({String title, String body}) message = _notificationMessage();
-
-    await _notificationService.schedulePhaseCompletion(
-      phaseEndsAtUtc: state.phaseEndsAtUtc!,
-      phase: state.phase,
-      title: message.title,
-      body: message.body,
-    );
+    try {
+      final NotificationScheduleOutcome outcome = await _notificationService
+          .schedulePhaseCompletion(
+            phaseEndsAtUtc: state.phaseEndsAtUtc!,
+            phase: state.phase,
+            title: message.title,
+            body: message.body,
+          );
+      if (outcome == NotificationScheduleOutcome.inexactFallbackScheduled) {
+        _onNotificationFallback();
+      }
+    } catch (_) {
+      // Timer behavior must continue even when notification scheduling fails.
+    }
   }
 
   ({String title, String body}) _notificationMessage() {
@@ -381,10 +399,12 @@ class PhaseProgression {
   const PhaseProgression({
     required this.nextPhase,
     required this.completedPomodorosInCycle,
+    required this.fullCyclesIncrement,
   });
 
   final TimerPhase nextPhase;
   final int completedPomodorosInCycle;
+  final int fullCyclesIncrement;
 }
 
 class RunningResolution {

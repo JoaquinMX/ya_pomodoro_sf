@@ -15,6 +15,25 @@ class TimerScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AppLocalizations l10n = AppLocalizations.of(context);
+    ref.listen<int>(notificationFallbackEventCounterProvider, (
+      int? previous,
+      int next,
+    ) {
+      if (next <= 0 || previous == next) {
+        return;
+      }
+      final ScaffoldMessengerState? messenger = ScaffoldMessenger.maybeOf(
+        context,
+      );
+      if (messenger == null) {
+        return;
+      }
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        SnackBar(content: Text(l10n.notificationInexactFallbackNotice)),
+      );
+    });
+
     final TimerSessionState timerState = ref.watch(timerControllerProvider);
     final PomodoroSettings settings = ref.watch(settingsControllerProvider);
     final timerController = ref.read(timerControllerProvider.notifier);
@@ -22,6 +41,7 @@ class TimerScreen extends ConsumerWidget {
     final bool isRunning = timerState.runState == TimerRunState.running;
     final bool isPaused = timerState.runState == TimerRunState.paused;
     final bool canResetWork = timerState.phase == TimerPhase.pomodoro;
+    final int cycleDisplayIndex = _cycleDisplayIndex(timerState);
     final double primaryButtonWidth = _primaryButtonWidth(context, l10n);
 
     final String primaryLabel = isRunning
@@ -110,12 +130,25 @@ class TimerScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                if (settings.showCycleProgress)
-                  Text(
-                    l10n.cycleProgress(timerState.completedPomodorosInCycle),
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
+                const SizedBox(height: 14),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 10,
+                  runSpacing: 8,
+                  children: <Widget>[
+                    if (settings.showCycleProgress)
+                      _buildStatChip(
+                        context,
+                        label: l10n.cycleProgress(cycleDisplayIndex),
+                      ),
+                    _buildStatChip(
+                      context,
+                      label: l10n.fullCyclesLabel(
+                        timerState.fullCyclesCompletedTotal,
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 28),
                 Column(
                   children: <Widget>[
@@ -201,6 +234,11 @@ class TimerScreen extends ConsumerWidget {
     return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
 
+  int _cycleDisplayIndex(TimerSessionState state) {
+    final int oneIndexed = state.completedPomodorosInCycle + 1;
+    return oneIndexed.clamp(1, 4);
+  }
+
   double _primaryButtonWidth(BuildContext context, AppLocalizations l10n) {
     final TextStyle textStyle =
         Theme.of(context).textTheme.labelLarge ?? const TextStyle(fontSize: 14);
@@ -227,5 +265,17 @@ class TimerScreen extends ConsumerWidget {
     const double horizontalPadding = 48;
     const double minimumWidth = 96;
     return math.max(minimumWidth, widestLabel + horizontalPadding);
+  }
+
+  Widget _buildStatChip(BuildContext context, {required String label}) {
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
+    );
   }
 }

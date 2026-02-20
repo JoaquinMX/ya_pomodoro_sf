@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ya_pomodoro_sf/features/settings/domain/pomodoro_settings.dart';
 import 'package:ya_pomodoro_sf/features/timer/application/timer_controller.dart';
 import 'package:ya_pomodoro_sf/features/timer/domain/timer_models.dart';
+import 'package:ya_pomodoro_sf/services/notifications/notification_service.dart';
 
 import '../../../test_doubles.dart';
 
@@ -32,6 +33,7 @@ void main() {
 
       expect(controller.state.runState, TimerRunState.idle);
       expect(controller.state.remainingSeconds, 25 * 60);
+      expect(controller.state.fullCyclesCompletedTotal, 0);
 
       await controller.start();
       expect(controller.state.runState, TimerRunState.running);
@@ -55,7 +57,84 @@ void main() {
       expect(controller.state.phase, TimerPhase.pomodoro);
       expect(controller.state.completedPomodorosInCycle, 0);
       expect(controller.state.remainingSeconds, 25 * 60);
+      expect(controller.state.fullCyclesCompletedTotal, 0);
       expect(notificationService.cancelCalls, 2);
+    });
+
+    test(
+      'emits fallback callback when notification schedule downgrades',
+      () async {
+        int fallbackEvents = 0;
+        notificationService.scheduleOutcome =
+            NotificationScheduleOutcome.inexactFallbackScheduled;
+
+        final TimerController controller = TimerController(
+          initialSettings: PomodoroSettings.defaults(),
+          initialSession: null,
+          sessionRepository: sessionRepository,
+          notificationService: notificationService,
+          audioCueService: audioService,
+          now: clock.call,
+          onNotificationFallback: () {
+            fallbackEvents += 1;
+          },
+        );
+        addTearDown(controller.dispose);
+
+        await controller.start();
+
+        expect(controller.state.runState, TimerRunState.running);
+        expect(fallbackEvents, 1);
+      },
+    );
+
+    test(
+      'start and resume stay non-fatal when notification scheduling throws',
+      () async {
+        notificationService.scheduleException = Exception('schedule failed');
+
+        final TimerController controller = TimerController(
+          initialSettings: PomodoroSettings.defaults(),
+          initialSession: null,
+          sessionRepository: sessionRepository,
+          notificationService: notificationService,
+          audioCueService: audioService,
+          now: clock.call,
+        );
+        addTearDown(controller.dispose);
+
+        await expectLater(controller.start(), completes);
+        expect(controller.state.runState, TimerRunState.running);
+
+        await controller.pause();
+        await expectLater(controller.start(), completes);
+        expect(controller.state.runState, TimerRunState.running);
+      },
+    );
+
+    test('reset preserves accumulated full-cycle total', () async {
+      final TimerController controller = TimerController(
+        initialSettings: PomodoroSettings.defaults(),
+        initialSession: const TimerSessionState(
+          phase: TimerPhase.pomodoro,
+          runState: TimerRunState.paused,
+          remainingSeconds: 120,
+          completedPomodorosInCycle: 2,
+          fullCyclesCompletedTotal: 5,
+        ),
+        sessionRepository: sessionRepository,
+        notificationService: notificationService,
+        audioCueService: audioService,
+        now: clock.call,
+      );
+      addTearDown(controller.dispose);
+
+      await controller.reset();
+
+      expect(controller.state.phase, TimerPhase.pomodoro);
+      expect(controller.state.runState, TimerRunState.idle);
+      expect(controller.state.completedPomodorosInCycle, 0);
+      expect(controller.state.fullCyclesCompletedTotal, 5);
     });
 
     test(
@@ -68,6 +147,7 @@ void main() {
             runState: TimerRunState.paused,
             remainingSeconds: 42,
             completedPomodorosInCycle: 2,
+            fullCyclesCompletedTotal: 6,
           ),
           sessionRepository: sessionRepository,
           notificationService: notificationService,
@@ -85,6 +165,7 @@ void main() {
         expect(controller.state.runState, TimerRunState.running);
         expect(controller.state.remainingSeconds, 25 * 60);
         expect(controller.state.completedPomodorosInCycle, 2);
+        expect(controller.state.fullCyclesCompletedTotal, 6);
         expect(controller.state.phaseStartedAtUtc, isNotNull);
         expect(controller.state.phaseEndsAtUtc, isNotNull);
         expect(notificationService.scheduledCalls.length, scheduledBefore + 1);
@@ -101,6 +182,7 @@ void main() {
             runState: TimerRunState.paused,
             remainingSeconds: 10,
             completedPomodorosInCycle: 3,
+            fullCyclesCompletedTotal: 4,
           ),
           sessionRepository: sessionRepository,
           notificationService: notificationService,
@@ -115,6 +197,7 @@ void main() {
         expect(controller.state.runState, TimerRunState.paused);
         expect(controller.state.remainingSeconds, 25 * 60);
         expect(controller.state.completedPomodorosInCycle, 3);
+        expect(controller.state.fullCyclesCompletedTotal, 4);
         expect(controller.state.phaseStartedAtUtc, isNull);
         expect(controller.state.phaseEndsAtUtc, isNull);
       },
@@ -130,6 +213,7 @@ void main() {
             runState: TimerRunState.idle,
             remainingSeconds: 10,
             completedPomodorosInCycle: 1,
+            fullCyclesCompletedTotal: 8,
           ),
           sessionRepository: sessionRepository,
           notificationService: notificationService,
@@ -144,6 +228,7 @@ void main() {
         expect(controller.state.runState, TimerRunState.idle);
         expect(controller.state.remainingSeconds, 25 * 60);
         expect(controller.state.completedPomodorosInCycle, 1);
+        expect(controller.state.fullCyclesCompletedTotal, 8);
         expect(controller.state.phaseStartedAtUtc, isNull);
         expect(controller.state.phaseEndsAtUtc, isNull);
       },
@@ -157,6 +242,7 @@ void main() {
           runState: TimerRunState.paused,
           remainingSeconds: 200,
           completedPomodorosInCycle: 2,
+          fullCyclesCompletedTotal: 9,
         ),
         sessionRepository: sessionRepository,
         notificationService: notificationService,
@@ -175,6 +261,10 @@ void main() {
       expect(
         controller.state.completedPomodorosInCycle,
         before.completedPomodorosInCycle,
+      );
+      expect(
+        controller.state.fullCyclesCompletedTotal,
+        before.fullCyclesCompletedTotal,
       );
       expect(notificationService.scheduledCalls.length, scheduledBefore);
     });
@@ -218,6 +308,7 @@ void main() {
           runState: TimerRunState.running,
           remainingSeconds: 1,
           completedPomodorosInCycle: 4,
+          fullCyclesCompletedTotal: 3,
           phaseStartedAtUtc: start,
           phaseEndsAtUtc: start.add(const Duration(seconds: 1)),
         );
@@ -235,6 +326,7 @@ void main() {
         expect(controller.state.phase, TimerPhase.pomodoro);
         expect(controller.state.runState, TimerRunState.running);
         expect(controller.state.completedPomodorosInCycle, 0);
+        expect(controller.state.fullCyclesCompletedTotal, 4);
       },
     );
 
@@ -274,8 +366,44 @@ void main() {
         expect(controller.state.phase, TimerPhase.shortBreak);
         expect(controller.state.completedPomodorosInCycle, 2);
         expect(controller.state.remainingSeconds, 50);
+        expect(controller.state.fullCyclesCompletedTotal, 0);
       },
     );
+
+    test('catch-up increments full cycles across long-break completions', () {
+      final PomodoroSettings oneMinuteSettings = const PomodoroSettings(
+        pomodoroMinutes: 1,
+        shortBreakMinutes: 1,
+        longBreakMinutes: 1,
+        showCycleProgress: true,
+        localeMode: LocaleMode.en,
+      );
+
+      final DateTime start = DateTime.utc(2026, 1, 1, 7, 0, 0);
+      clock.now = start.add(const Duration(seconds: 181));
+
+      final TimerSessionState runningLongBreak = TimerSessionState(
+        phase: TimerPhase.longBreak,
+        runState: TimerRunState.running,
+        remainingSeconds: 60,
+        completedPomodorosInCycle: 4,
+        fullCyclesCompletedTotal: 2,
+        phaseStartedAtUtc: start,
+        phaseEndsAtUtc: start.add(const Duration(seconds: 60)),
+      );
+
+      final TimerController controller = TimerController(
+        initialSettings: oneMinuteSettings,
+        initialSession: runningLongBreak,
+        sessionRepository: sessionRepository,
+        notificationService: notificationService,
+        audioCueService: audioService,
+        now: clock.call,
+      );
+      addTearDown(controller.dispose);
+
+      expect(controller.state.fullCyclesCompletedTotal, 3);
+    });
 
     test(
       'applySettings validates bounds and blocks non-idle updates',

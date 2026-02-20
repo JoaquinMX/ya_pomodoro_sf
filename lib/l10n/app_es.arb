@@ -11,9 +11,17 @@
   "resetWorkButton": "Reiniciar trabajo",
   "settingsButton": "Configuración",
   "cycleProgress": "Ciclo {completed}/4",
+  "fullCyclesLabel": "Ciclos completos {count}",
   "@cycleProgress": {
     "placeholders": {
       "completed": {
+        "type": "int"
+      }
+    }
+  },
+  "@fullCyclesLabel": {
+    "placeholders": {
+      "count": {
         "type": "int"
       }
     }
@@ -30,6 +38,7 @@
   "cancelButton": "Cancelar",
   "settingsLockedMessage": "Detén el temporizador para editar la configuración.",
   "invalidDuration": "Usa un valor entre 1 y 120.",
+  "notificationInexactFallbackNotice": "Las alarmas exactas no están disponibles. Las notificaciones podrían retrasarse un poco.",
   "notificationPhaseCompleteTitle": "Fase completada",
   "notificationPhaseCompleteBody": "Tu temporizador pasó a la siguiente fase"
 }

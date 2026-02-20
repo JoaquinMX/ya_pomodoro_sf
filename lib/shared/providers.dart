@@ -21,6 +21,10 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
   throw UnimplementedError('notificationServiceProvider must be overridden.');
 });
 
+final notificationFallbackEventCounterProvider = StateProvider<int>((ref) {
+  return 0;
+});
+
 final audioCueServiceProvider = Provider<AudioCueService>((ref) {
   throw UnimplementedError('audioCueServiceProvider must be overridden.');
 });
@@ -54,5 +58,11 @@ final timerControllerProvider =
         notificationService: ref.watch(notificationServiceProvider),
         audioCueService: ref.watch(audioCueServiceProvider),
         now: ref.watch(nowProvider),
+        onNotificationFallback: () {
+          final StateController<int> counter = ref.read(
+            notificationFallbackEventCounterProvider.notifier,
+          );
+          counter.state = counter.state + 1;
+        },
       );
     });

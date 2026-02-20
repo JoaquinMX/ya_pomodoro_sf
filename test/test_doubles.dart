@@ -71,6 +71,9 @@ class FakeNotificationService implements NotificationService {
   int permissionRequests = 0;
   int cancelCalls = 0;
   final List<NotificationCall> scheduledCalls = <NotificationCall>[];
+  NotificationScheduleOutcome scheduleOutcome =
+      NotificationScheduleOutcome.exactScheduled;
+  Object? scheduleException;
 
   @override
   Future<void> init() async {
@@ -83,7 +86,7 @@ class FakeNotificationService implements NotificationService {
   }
 
   @override
-  Future<void> schedulePhaseCompletion({
+  Future<NotificationScheduleOutcome> schedulePhaseCompletion({
     required DateTime phaseEndsAtUtc,
     required TimerPhase phase,
     required String title,
@@ -97,6 +100,10 @@ class FakeNotificationService implements NotificationService {
         body: body,
       ),
     );
+    if (scheduleException != null) {
+      throw scheduleException!;
+    }
+    return scheduleOutcome;
   }
 
   @override

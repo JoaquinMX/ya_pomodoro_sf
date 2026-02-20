@@ -44,6 +44,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String fullCyclesLabel(int count) {
+    return 'Full cycles $count';
+  }
+
+  @override
   String get pomodoroDurationLabel => 'Pomodoro (minutes)';
 
   @override
@@ -78,6 +83,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get invalidDuration => 'Use a value between 1 and 120.';
+
+  @override
+  String get notificationInexactFallbackNotice =>
+      'Exact alarms are unavailable. Notifications may be delayed slightly.';
 
   @override
   String get notificationPhaseCompleteTitle => 'Phase complete';

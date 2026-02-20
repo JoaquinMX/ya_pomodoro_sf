@@ -6,6 +6,7 @@ import 'package:ya_pomodoro_sf/features/settings/domain/pomodoro_settings.dart';
 import 'package:ya_pomodoro_sf/features/timer/domain/timer_models.dart';
 import 'package:ya_pomodoro_sf/features/timer/presentation/timer_screen.dart';
 import 'package:ya_pomodoro_sf/l10n/generated/app_localizations.dart';
+import 'package:ya_pomodoro_sf/services/notifications/notification_service.dart';
 import 'package:ya_pomodoro_sf/shared/providers.dart';
 
 import '../../../test_doubles.dart';
@@ -112,6 +113,7 @@ void main() {
       expect(find.text('Start'), findsOneWidget);
       expect(find.text('Reset all'), findsOneWidget);
       expect(find.text('Reset work'), findsOneWidget);
+      expect(find.text('Full cycles 0'), findsOneWidget);
 
       await tester.tap(find.text('Start'));
       await tester.pump();
@@ -125,6 +127,53 @@ void main() {
       await tester.pump();
       expect(find.text('25:00'), findsOneWidget);
       expect(find.text('Start'), findsOneWidget);
+    });
+
+    testWidgets('shows fallback notice when schedule downgrades to inexact', (
+      WidgetTester tester,
+    ) async {
+      notificationService.scheduleOutcome =
+          NotificationScheduleOutcome.inexactFallbackScheduled;
+      final ProviderContainer container = await pumpScreen(tester);
+
+      await tester.tap(find.text('Start'));
+      await tester.pump();
+
+      expect(
+        find.text(
+          'Exact alarms are unavailable. Notifications may be delayed slightly.',
+        ),
+        findsOneWidget,
+      );
+
+      await container.read(timerControllerProvider.notifier).pause();
+      await tester.pump();
+    });
+
+    testWidgets('shows fallback notice for repeated fallback events', (
+      WidgetTester tester,
+    ) async {
+      final ProviderContainer container = await pumpScreen(tester);
+
+      container.read(notificationFallbackEventCounterProvider.notifier).state =
+          1;
+      await tester.pump();
+      expect(
+        find.text(
+          'Exact alarms are unavailable. Notifications may be delayed slightly.',
+        ),
+        findsOneWidget,
+      );
+
+      container.read(notificationFallbackEventCounterProvider.notifier).state =
+          2;
+      await tester.pump();
+      expect(
+        find.text(
+          'Exact alarms are unavailable. Notifications may be delayed slightly.',
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('actions are rendered in two rows', (
@@ -159,6 +208,15 @@ void main() {
         find.descendant(of: secondRow, matching: find.text('Reset work')),
         findsNothing,
       );
+    });
+
+    testWidgets('stats row shows cycle and full-cycle totals', (
+      WidgetTester tester,
+    ) async {
+      await pumpScreen(tester);
+
+      expect(find.text('Cycle 1/4'), findsOneWidget);
+      expect(find.text('Full cycles 0'), findsOneWidget);
     });
 
     testWidgets('primary action button width stays stable across states', (
@@ -228,14 +286,16 @@ void main() {
         );
 
         expect(find.text('00:10'), findsOneWidget);
-        expect(find.text('Cycle 2/4'), findsOneWidget);
+        expect(find.text('Cycle 3/4'), findsOneWidget);
+        expect(find.text('Full cycles 0'), findsOneWidget);
         expect(find.text('Resume'), findsOneWidget);
 
         await tester.tap(find.text('Reset work'));
         await tester.pump();
 
         expect(find.text('25:00'), findsOneWidget);
-        expect(find.text('Cycle 2/4'), findsOneWidget);
+        expect(find.text('Cycle 3/4'), findsOneWidget);
+        expect(find.text('Full cycles 0'), findsOneWidget);
         expect(find.text('Resume'), findsOneWidget);
       },
     );
@@ -250,17 +310,20 @@ void main() {
           runState: TimerRunState.paused,
           remainingSeconds: 50,
           completedPomodorosInCycle: 3,
+          fullCyclesCompletedTotal: 7,
         ),
       );
 
-      expect(find.text('Cycle 3/4'), findsOneWidget);
+      expect(find.text('Cycle 4/4'), findsOneWidget);
+      expect(find.text('Full cycles 7'), findsOneWidget);
       expect(find.text('Resume'), findsOneWidget);
 
       await tester.tap(find.text('Reset all'));
       await tester.pump();
 
       expect(find.text('25:00'), findsOneWidget);
-      expect(find.text('Cycle 0/4'), findsOneWidget);
+      expect(find.text('Cycle 1/4'), findsOneWidget);
+      expect(find.text('Full cycles 7'), findsOneWidget);
       expect(find.text('Start'), findsOneWidget);
     });
 
@@ -289,7 +352,7 @@ void main() {
       WidgetTester tester,
     ) async {
       await pumpScreen(tester);
-      expect(find.text('Cycle 0/4'), findsOneWidget);
+      expect(find.text('Cycle 1/4'), findsOneWidget);
 
       await tester.tap(find.byIcon(Icons.tune_rounded));
       await tester.pumpAndSettle();
@@ -300,6 +363,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Cycle'), findsNothing);
+      expect(find.text('Full cycles 0'), findsOneWidget);
     });
 
     testWidgets('locale updates to Spanish (LatAm)', (

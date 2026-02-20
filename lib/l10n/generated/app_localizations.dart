@@ -165,6 +165,12 @@ abstract class AppLocalizations {
   /// **'Cycle {completed}/4'**
   String cycleProgress(int completed);
 
+  /// No description provided for @fullCyclesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Full cycles {count}'**
+  String fullCyclesLabel(int count);
+
   /// No description provided for @pomodoroDurationLabel.
   ///
   /// In en, this message translates to:
@@ -236,6 +242,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Use a value between 1 and 120.'**
   String get invalidDuration;
+
+  /// No description provided for @notificationInexactFallbackNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Exact alarms are unavailable. Notifications may be delayed slightly.'**
+  String get notificationInexactFallbackNotice;
 
   /// No description provided for @notificationPhaseCompleteTitle.
   ///
